@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "gradle: test (owl + app)",
+      "type": "shell",
+      "command": "./gradlew :owl:test :app:testDebugUnitTest --console=plain",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "owl: build cli jar",
+      "type": "shell",
+      "command": "./gradlew :owl:owlJar --console=plain",
+      "problemMatcher": []
+    }
+  ]
+}
