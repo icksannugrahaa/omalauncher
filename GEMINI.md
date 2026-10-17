@@ -1,12 +1,17 @@
 # GEMINI.md
 
-**Never build, install, or uninstall the Omalauncher APK in this repository.**
+**Building the Omalauncher APK is fine. Installing, uninstalling, or clearing it on a
+device is never allowed.**
 
-Forbidden: `./gradlew :app:assembleDebug`, `:app:assembleRelease`, `:app:installDebug`,
-`:app:bundle*`, `./gradlew build`, `./scripts/fetch-proot.sh`, `adb install`,
-`adb uninstall dev.omalauncher`, `adb shell pm uninstall|clear dev.omalauncher`.
+Why: an uninstall deletes `filesDir`, which holds the Arch Linux rootfs and all the
+owner's Linux data. That has already destroyed their install once.
 
-Allowed: source reading/editing, static analysis, `./gradlew :owl:test :app:testDebugUnitTest`,
-`./gradlew :owl:owlJar`.
+Forbidden: `./gradlew :app:installDebug`, `:app:installRelease`, `adb install`,
+`adb install-multiple`, `adb push` of any APK, `adb uninstall dev.omalauncher`,
+`adb shell pm uninstall|clear dev.omalauncher`, `adb shell rm -rf` on app storage.
 
-Full rule and rationale: `AGENTS.md` at the repo root.
+Allowed: source reading/editing, static analysis, `:owl:test`, `:app:testDebugUnitTest`,
+`:owl:owlJar`, and builds — `:app:compileDebugKotlin`, `:app:lintDebug`, `:app:assembleDebug`,
+`:app:assembleRelease`, `:app:bundle*`, `./gradlew build`, `./scripts/fetch-proot.sh`.
+
+Full rule and rationale: `AGENTS.md` and `docs/BUILD-AND-INSTALL.md`.

@@ -52,15 +52,25 @@ and Super+W (close) in Linux windows.
 
 ```sh
 ./scripts/fetch-proot.sh          # Termux's proot -> app/src/main/jniLibs (needs bsdtar)
-./gradlew :app:installDebug
-# optional: skip the 830 MB download on the device
+./gradlew :app:assembleDebug      # APK -> app/build/outputs/apk/debug/
+```
+
+Building is safe. **Installing is not** in this fork: an uninstall wipes the Arch
+Linux rootfs and all the data inside it. See
+[docs/BUILD-AND-INSTALL.md](docs/BUILD-AND-INSTALL.md).
+
+On upstream, `./gradlew :app:installDebug` installs to a connected device; here it is
+forbidden. To avoid the 830 MB download on first run, a rootfs tarball can be pushed
+to the app's external files dir before the first launch (first-run bootstrap only):
+
+```sh
 adb push ArchLinuxARM-aarch64-latest.tar.gz /sdcard/Android/data/dev.omalauncher/files/
 ```
 
 Tests: `./gradlew :owl:test :app:testDebugUnitTest`. `./gradlew :owl:owlJar`
 builds `owl/build/cli/owl.jar`, the checker the widget store's CI runs.
 
-In debug builds you can launch guest commands with
+In debug builds you can launch guest commands on an existing install with
 `adb shell am start -n dev.omalauncher/.MainActivity --es exec foot`.
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the compositor, rendering, GPU

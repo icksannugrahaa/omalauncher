@@ -1,5 +1,8 @@
-Never build, install, or uninstall the Omalauncher APK in this repository. Forbidden:
-`./gradlew :app:assembleDebug`, `:app:assembleRelease`, `:app:installDebug`, `:app:bundle*`,
-`./gradlew build`, `./scripts/fetch-proot.sh`, `adb install`, `adb uninstall dev.omalauncher`.
-Allowed: reading/editing sources, `./gradlew :owl:test :app:testDebugUnitTest`,
-`./gradlew :owl:owlJar`. See AGENTS.md for the full rule and rationale.
+Building the Omalauncher APK is allowed. Installing, uninstalling, or clearing it on a
+device is forbidden — an uninstall deletes `filesDir`, which holds the Arch Linux rootfs
+and all the owner's Linux data. Forbidden: `:app:installDebug`, `:app:installRelease`,
+`adb install`, `adb install-multiple`, `adb push` of an APK, `adb uninstall dev.omalauncher`,
+`adb shell pm uninstall|clear dev.omalauncher`. Allowed: reading/editing sources,
+`:app:assembleDebug|Release`, `:app:bundle*`, `:app:compileDebugKotlin`, `./gradlew build`,
+`./scripts/fetch-proot.sh`, `./gradlew :owl:test :app:testDebugUnitTest`, `./gradlew :owl:owlJar`.
+See AGENTS.md and docs/BUILD-AND-INSTALL.md for the full rule and rationale.

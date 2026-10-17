@@ -5,46 +5,72 @@ GitHub Copilot, Cline, rea, or any other) working in this repository.
 
 ---
 
-## HARD RULE: never build or install the APK
+## HARD RULE: build is fine, install/uninstall is never
 
-**Do not build the APK. Do not install the APK. Do not uninstall it either.**
+**Building the APK is allowed. Installing, uninstalling, or clearing the app on any
+device is forbidden.**
 
 The owner of this fork stated this explicitly and permanently:
 
-> "jangan pernah lakukan build apk / re install apk omalauncher lagi"
+> "build boleh, tapi langsung install ke device itu dilarang sepenuhnya"
 
-### Forbidden — no exceptions, no "just to verify", no "user probably wants it"
+### Why — the one thing that actually destroyed data
 
-- `./gradlew :app:assembleDebug`
-- `./gradlew :app:assembleRelease`
-- `./gradlew :app:bundleDebug` / `:app:bundleRelease`
+Omalauncher keeps everything in the app's private `filesDir`
+(`/data/data/dev.omalauncher/files`): the Arch Linux rootfs (`files/arch`), widgets,
+themes, style, and settings. Android deletes `filesDir` on uninstall, with no backup.
+
+A previous round uninstalled the installed **0.7.2** and installed a locally built
+**0.8.0** debug APK. The uninstall wiped `filesDir`, and with it the owner's entire
+Arch Linux system and all its data. That must never happen again.
+
+The APK was never the problem. The device was.
+
+### Forbidden — no exceptions, no "just to verify", no "the user probably wants it"
+
+Installing or replacing the app:
+
 - `./gradlew :app:installDebug` / `:app:installRelease`
-- `./gradlew build` or any task that transitively assembles the `:app` APK/AAB
-- `./scripts/fetch-proot.sh` (it exists only to feed the APK build)
-- `adb install`, `adb install-multiple`, `adb push` of an APK
-- `adb uninstall dev.omalauncher`, `adb shell pm uninstall`, `adb shell pm clear`
-- Any CI job, Gradle task, script, or shell pipeline that ends in one of the above
+- `adb install <any apk>`, `adb install-multiple`, `adb install --streaming`
+- `adb push app-debug.apk <anywhere on the device>`
 
-### Allowed
+Uninstalling or wiping:
+
+- `adb uninstall dev.omalauncher`
+- `adb shell pm uninstall dev.omalauncher` (including `--user 0`)
+- `adb shell pm clear dev.omalauncher` — same data loss as an uninstall
+- `adb shell rm -rf /data/data/dev.omalauncher` or on its `files/` subdirs
+- `adb shell rm -rf /sdcard/Android/data/dev.omalauncher`
+
+Any CI job, Gradle task, script, or shell pipeline that ends in one of the above.
+
+### Allowed — building (touches no device)
+
+- `./gradlew :app:compileDebugKotlin`
+- `./gradlew :app:lintDebug`
+- `./gradlew :app:assembleDebug` / `:app:assembleRelease`
+- `./gradlew :app:bundleDebug` / `:app:bundleRelease`
+- `./gradlew build` — full build, also assembles the APK
+- `./scripts/fetch-proot.sh` — build prerequisite (proot into `jniLibs`), no device
+
+Build outputs stay in `app/build/`. They are never installed.
+
+### Allowed — everything else
 
 - Reading and exploring sources (`app/src/main/kotlin/**`, `owl/**`, `patches/**`, `docs/**`)
 - Editing Kotlin / Compose / CMake / Gradle source files
 - Static analysis, review, documentation
 - `./gradlew :owl:test :app:testDebugUnitTest` — JVM unit tests, produces no APK
 - `./gradlew :owl:owlJar` — the widget checker CLI, produces no APK
+- Read-only device queries (`adb shell pm path dev.omalauncher`)
+- Debug launches on an existing install (`adb shell am start -n dev.omalauncher/.MainActivity --es exec foot`)
 
-### Why
-
-A previous build replaced the owner's working install on their device: the installed
-0.7.2 build was uninstalled and a locally built 0.8.0 debug APK was installed on top.
-That destroyed their working state. Do not repeat it.
-
-If the owner later asks for a build, treat this rule as still binding and require an
-explicit, unambiguous reversal before acting.
+Do not run `scripts/store-previews*.sh` or push a rootfs tarball unless asked —
+they drive or feed the live app.
 
 ---
 
-## Build prerequisites (for reference only — do not run the build)
+## Build prerequisites (reference — build allowed, install not)
 
 | Tool | Version |
 |---|---|
@@ -54,5 +80,7 @@ explicit, unambiguous reversal before acting.
 | NDK | `30.0.16248370` |
 | SDK location | `local.properties` → `sdk.dir` |
 
-Documented in `README.md` under "Building". That section describes upstream's workflow,
-not this fork's policy — the rule above overrides it.
+`README.md` under "Building" describes upstream's workflow; its build commands are
+fine, its `installDebug` step is not.
+
+Full rule: `docs/BUILD-AND-INSTALL.md`.

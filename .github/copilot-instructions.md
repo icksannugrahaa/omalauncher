@@ -1,10 +1,17 @@
 # Repository rules
 
-**Never build the APK. Never install or uninstall the APK.** No `assembleDebug`,
-`assembleRelease`, `installDebug`, `bundle*`, `scripts/fetch-proot.sh`, `adb install`,
-or `adb uninstall dev.omalauncher`.
+**Build the APK freely. Never install, uninstall, or clear it on a device.**
 
-Tests and the widget CLI are fine: `./gradlew :owl:test :app:testDebugUnitTest`,
-`./gradlew :owl:owlJar`.
+Uninstalling or `pm clear` deletes `filesDir`, which holds the Arch Linux rootfs and
+all the owner's Linux data. It has destroyed their install once already.
 
-Full rationale and the complete forbidden/allowed list: see `AGENTS.md` at the repo root.
+Forbidden: `installDebug`, `installRelease`, `adb install`, `adb install-multiple`,
+`adb push` of an APK, `adb uninstall dev.omalauncher`, `adb shell pm uninstall|clear
+dev.omalauncher`.
+
+Allowed: builds (`assembleDebug`, `assembleRelease`, `bundle*`, `./gradlew build`,
+`scripts/fetch-proot.sh`), tests (`./gradlew :owl:test :app:testDebugUnitTest`), and the
+widget CLI (`./gradlew :owl:owlJar`).
+
+Full rationale and the complete forbidden/allowed list: `AGENTS.md` and
+`docs/BUILD-AND-INSTALL.md` at the repo root.
