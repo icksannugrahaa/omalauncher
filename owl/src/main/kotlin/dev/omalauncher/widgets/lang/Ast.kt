@@ -89,6 +89,21 @@ sealed interface Stmt {
         val call: Expr,
         override val pos: Int,
     ) : Stmt
+
+    /** `if cond { ... } else { ... }` in a handler (owl 9); `else if` is an If alone in [orElse]. */
+    data class If(
+        val cond: Expr,
+        val then: List<Stmt>,
+        val orElse: List<Stmt>,
+        override val pos: Int,
+    ) : Stmt
+
+    /** `let x = ...` in a handler (owl 9): a name for the statements after it, in its block. */
+    data class Let(
+        val name: String,
+        val value: Expr,
+        override val pos: Int,
+    ) : Stmt
 }
 
 /** Everything between a node's braces. */
@@ -175,6 +190,8 @@ sealed interface Decl {
         override val pos: Int,
         /** `persist`: the value survives restarts. */
         val persist: Boolean = false,
+        /** `secret`: survives restarts encrypted, and only goes into requests. */
+        val secret: Boolean = false,
     ) : Decl
 
     class Let(
@@ -207,15 +224,30 @@ sealed interface Decl {
 
     /**
      * Statements that run on their own instead of on a touch (owl 4):
-     * `every 10s { }`, `at endsAt { }`, `when cond { }`, `on value { }`.
+     * `every 10s { }`, `at endsAt { }`, `when cond { }`, `on value { }`, and `on value first { }`
+     * to run for its first value too (owl 9).
      */
     class Trigger(
         val kind: String,
         val expr: Expr,
         val stmts: List<Stmt>,
         override val pos: Int,
+        val first: Boolean = false,
+        /** `on feed each { }`: for every message of a ws(...) source. */
+        val each: Boolean = false,
     ) : Decl {
         override val name get() = kind
+    }
+
+    /**
+     * `strings { en { feels: "feels" } id { feels: "terasa" } }` (owl 16): the texts a person reads, per language,
+     * read as `str.feels`; the phone's language picks the set, and en fills in what it lacks.
+     */
+    class Strings(
+        val sets: List<Pair<String, List<Prop>>>,
+        override val pos: Int,
+    ) : Decl {
+        override val name get() = STRINGS
     }
 
     /** `requires { pacman: ["jq"] }`: packages per package manager. */
@@ -227,19 +259,28 @@ sealed interface Decl {
     }
 }
 
+/** The name a widget reads its [Decl.Strings] by: `str.feels`. */
+const val STRINGS = "str"
+
 class WidgetAst(
     val name: String?,
     val body: Body,
-    /** What the file is, from its first word: widget or app; see [OwlKind]. */
+    /** What the file is, from its first word: widget, face, app, panel or keys; see [OwlKind]. */
     val kind: OwlKind = OwlKind.Widget,
 )
 
-/** What an owl file is: a home-screen tile or an app in the drawer. */
+/**
+ * What an owl file is: a home-screen tile, a face (a whole home page), an app in the drawer, a panel a swipe on home
+ * opens, or the extra keys over the soft keyboard while typing in a terminal.
+ */
 enum class OwlKind(
     val word: String,
 ) {
     Widget("widget"),
+    Face("face"),
     App("app"),
+    Panel("panel"),
+    Keybar("keybar"),
     ;
 
     companion object {
