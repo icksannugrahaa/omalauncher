@@ -1,6 +1,5 @@
 package dev.omalauncher
 
-import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -120,6 +119,24 @@ fun androidShortcutKey(
     profile: Long?,
 ) = "${ref.packageName}/#${profile ?: ""}#${ref.id}"
 
+/**
+ * App labels by package, looked up once each: the lookup is a binder call. A package that isn't installed (any more)
+ * is called by its name. Not thread-safe; each owner reads it from one thread at a time.
+ */
+class AppLabels(
+    private val context: Context,
+) {
+    private val labels = HashMap<String, String>()
+
+    operator fun get(pkg: String): String =
+        labels.getOrPut(pkg) {
+            runCatching {
+                val pm = context.packageManager
+                pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+            }.getOrDefault(pkg)
+        }
+}
+
 /** What a shortcut is called on home and in the drawer. */
 fun shortcutLabel(info: ShortcutInfo) = (info.shortLabel ?: info.longLabel)?.toString()?.takeIf { it.isNotBlank() } ?: info.id
 
@@ -180,7 +197,7 @@ class AndroidAppCatalog(
     /** Names by [AndroidApp.key] and [AndroidShortcut.key], in the phone's language now; home's tiles go by these. */
     val labels by derivedStateOf { apps.associate { it.key to it.label } + shortcuts.associate { it.key to it.label } }
 
-    private val byKey by derivedStateOf { apps.associateBy { it.key } }
+    internal val byKey by derivedStateOf { apps.associateBy { it.key } }
 
     /**
      * The app a home tile pinned as [component] in [profile] opens now. Apps that let you pick another icon (Duolingo,
@@ -222,6 +239,13 @@ class AndroidAppCatalog(
 
     /** Whether the last load could list [shortcuts]: only while this is the default home app. Long-press menus offer app shortcuts only then too. */
     var listsShortcuts by mutableStateOf(false)
+        private set
+
+    /** Keys of the apps whose icons are drawn first, ahead of the alphabet: the ones showing as the launcher starts. */
+    var iconsFirst: () -> Set<String> = { emptySet() }
+
+    /** Whether the apps have been listed once; until then [apps] is empty because nothing was asked yet, not because there are none. */
+    var listed by mutableStateOf(false)
         private set
 
     /** Icon edge in px: the drawer's 52dp icon at this screen's density. */
@@ -266,14 +290,7 @@ class AndroidAppCatalog(
                     addAction(Intent.ACTION_PROFILE_UNAVAILABLE)
                 }
             }
-        val receiver =
-            object : BroadcastReceiver() {
-                override fun onReceive(
-                    context: Context,
-                    intent: Intent,
-                ) = reload()
-            }
-        if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, changed, Context.RECEIVER_NOT_EXPORTED) else context.registerReceiver(receiver, changed)
+        context.registerNotExported(changed) { reload() }
         reload()
     }
 
@@ -542,10 +559,14 @@ class AndroidAppCatalog(
                     shortcuts.clear()
                     shortcuts += pinned
                 }
+                this@AndroidAppCatalog.listed = true
                 val present = (list.map { it.key } + pinned.map { it.key }).toHashSet()
                 icons.keys.retainAll(present)
                 masks.keys.retainAll(present)
-                for ((info, app) in infos) {
+                // Started in this order, and they run four at a time: with hundreds of apps, the recent strip's would
+                // otherwise wait their turn in the alphabet.
+                val first = iconsFirst()
+                for ((info, app) in infos.sortedBy { it.second.key !in first }) {
                     if (app.key !in icons) loadIcon(app.key, app.profile, app.clone) { info.getIcon(0) }
                 }
                 // Apps change a shortcut's icon without an update, so these are drawn again each time; there are only a few.
